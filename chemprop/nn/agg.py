@@ -5,6 +5,7 @@ from torch import Tensor, nn
 
 from chemprop.nn.hparams import HasHParams
 from chemprop.utils import ClassRegistry
+from chemprop.nn.set_transformer_models import SetTransformer
 
 __all__ = [
     "Aggregation",
@@ -13,6 +14,7 @@ __all__ = [
     "SumAggregation",
     "NormAggregation",
     "AttentiveAggregation",
+    "SetTransformerAggregation",
 ]
 
 
@@ -130,3 +132,49 @@ class AttentiveAggregation(Aggregation):
         return torch.zeros(dim_size, H.shape[1], dtype=H.dtype, device=H.device).scatter_reduce_(
             self.dim, index_torch, alphas * H, reduce="sum", include_self=False
         )
+
+# class SetTransformerAggregation(Aggregation):
+#     SetTransformer(dim_input=emb_dim*n_heads, num_outputs=1, dim_output=1).to(device)
+
+class SetTransformerAggregation(Aggregation):
+    def __init__(self, dim: int = 0, *args, output_size: int, num_heads: int = 4, dim_hidden: int = 128, **kwargs):
+        super().__init__(dim, *args, **kwargs)
+        
+        self.set_transformer = SetTransformer(
+            dim_input=output_size,
+            num_outputs=1,  # We want one output per set
+            dim_output=output_size,  # Maintain same dimension as input
+            dim_hidden=dim_hidden,
+            num_heads=num_heads
+        )
+        
+        # self.hparams.update({
+        #     "input_dim": input_dim,
+        #     "num_heads": num_heads,
+        #     "dim_hidden": dim_hidden
+        # })
+
+    def forward(self, H: Tensor, batch: Tensor) -> Tensor:
+        # Get dimensions
+        dim_size = batch.max().int() + 1  # Number of graphs in batch
+        
+        # # Create a padded tensor where each row is a graph's node features
+        # max_nodes = torch.bincount(batch).max()
+
+        # padded_H = torch.zeros(dim_size, max_nodes, H.shape[1], dtype=H.dtype, device=H.device)
+        # for i_graph in range(dim_size):
+        #     node_mask = batch == i_graph
+        #     graph = H[node_mask, :]
+        #     padded_H[i_graph, :graph.size(0)] = graph
+
+        # return self.set_transformer(padded_H).squeeze()
+        
+
+        agg_graph = torch.zeros(dim_size, H.shape[1], dtype=H.dtype, device=H.device)
+        max_graph_size = 0
+        for i_graph in range(batch.unique().size(0)):
+            node_mask = batch == i_graph
+            graph = H[node_mask, :].unsqueeze(0)
+            agg_graph[i_graph, :] = self.set_transformer(graph)
+            max_graph_size = max(max_graph_size, graph.size(1))
+        return agg_graph
