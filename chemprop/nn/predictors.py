@@ -171,7 +171,8 @@ class MveFFN(RegressionFFN):
     _T_default_criterion = MVELoss
 
     def forward(self, Z: Tensor) -> Tensor:
-        Y = self.ffn(Z)
+        # Y = self.ffn(Z)
+        Y = Z
         mean, var = torch.chunk(Y, self.n_targets, 1)
         var = F.softplus(var)
 

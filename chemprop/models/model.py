@@ -83,7 +83,8 @@ class MPNN(pl.LightningModule):
 
         self.message_passing = message_passing
         self.agg = agg
-        self.bn = nn.BatchNorm1d(self.message_passing.output_dim) if batch_norm else nn.Identity()
+        self.bn = nn.BatchNorm1d(4) if batch_norm else nn.Identity()
+        # self.bn = nn.BatchNorm1d(self.message_passing.output_dim) if batch_norm else nn.Identity()
         self.predictor = predictor
 
         self.X_d_transform = X_d_transform if X_d_transform is not None else nn.Identity()
@@ -183,6 +184,8 @@ class MPNN(pl.LightningModule):
         weights = torch.ones_like(targets)
 
         preds = torch.split(preds, preds.size(1) // self.n_targets, dim=1)[0]
+        # preds = torch.split(preds, 1, dim=1)[0]
+        # mask = torch.split(mask, 1, dim=1)[0]
 
         return [
             metric(preds, targets, mask, weights, lt_mask, gt_mask) for metric in self.metrics[:-1]

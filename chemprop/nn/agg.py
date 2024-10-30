@@ -143,7 +143,7 @@ class SetTransformerAggregation(Aggregation):
         self.set_transformer = SetTransformer(
             dim_input=output_size,
             num_outputs=1,  # We want one output per set
-            dim_output=output_size,  # Maintain same dimension as input
+            dim_output=4,  # Maintain same dimension as input
             dim_hidden=dim_hidden,
             num_heads=num_heads
         )
@@ -170,11 +170,11 @@ class SetTransformerAggregation(Aggregation):
         # return self.set_transformer(padded_H).squeeze()
         
 
-        agg_graph = torch.zeros(dim_size, H.shape[1], dtype=H.dtype, device=H.device)
-        max_graph_size = 0
+        agg_graph = torch.zeros(dim_size, 4, dtype=H.dtype, device=H.device)
+        # max_graph_size = 0
         for i_graph in range(batch.unique().size(0)):
             node_mask = batch == i_graph
             graph = H[node_mask, :].unsqueeze(0)
             agg_graph[i_graph, :] = self.set_transformer(graph)
-            max_graph_size = max(max_graph_size, graph.size(1))
+            # max_graph_size = max(max_graph_size, graph.size(1))
         return agg_graph
